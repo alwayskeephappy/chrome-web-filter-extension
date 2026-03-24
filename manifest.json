@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "Chrome Web Filter",
+  "description": "点击扩展按钮，切换当前网页的黑白滤镜。",
+  "version": "1.0.1",
+  "icons": {
+    "16": "icons/light-16.png",
+    "32": "icons/light-32.png",
+    "128": "icons/light.png"
+  },
+  "permissions": ["activeTab", "scripting"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "切换黑白滤镜",
+    "default_icon": {
+      "16": "icons/light-16.png",
+      "32": "icons/light-32.png"
+    }
+  }
+}
