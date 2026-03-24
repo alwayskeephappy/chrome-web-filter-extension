@@ -1,5 +1,4 @@
 const FILTER_STYLE_ID = "__chrome_web_filter_grayscale_style__";
-let globalFilterEnabled = false;
 
 const ICONS = {
   off: {
@@ -12,11 +11,13 @@ const ICONS = {
   },
 };
 
-async function setGlobalIcon(enabled) {
+async function setTabIcon(tabId, enabled) {
   await chrome.action.setIcon({
+    tabId,
     path: enabled ? ICONS.on : ICONS.off,
   });
   await chrome.action.setTitle({
+    tabId,
     title: enabled ? "关闭黑白滤镜" : "开启黑白滤镜",
   });
 }
@@ -44,6 +45,29 @@ async function toggleTabFilter(tabId) {
   return Boolean(result?.result);
 }
 
+async function getTabFilterEnabled(tabId) {
+  const [result] = await chrome.scripting.executeScript({
+    target: { tabId },
+    func: (styleId) => Boolean(document.getElementById(styleId)),
+    args: [FILTER_STYLE_ID],
+  });
+
+  return Boolean(result?.result);
+}
+
+async function syncTabIcon(tabId) {
+  if (!tabId) {
+    return;
+  }
+
+  try {
+    const enabled = await getTabFilterEnabled(tabId);
+    await setTabIcon(tabId, enabled);
+  } catch {
+    await setTabIcon(tabId, false).catch(() => {});
+  }
+}
+
 chrome.action.onClicked.addListener(async (tab) => {
   if (!tab.id) {
     return;
@@ -51,12 +75,18 @@ chrome.action.onClicked.addListener(async (tab) => {
 
   try {
     const enabled = await toggleTabFilter(tab.id);
-    globalFilterEnabled = enabled;
-    await setGlobalIcon(globalFilterEnabled);
-  } catch (error) {
-    await setGlobalIcon(false).catch(() => {});
-    console.error("切换黑白滤镜失败:", error);
+    await setTabIcon(tab.id, enabled);
+  } catch {
+    await setTabIcon(tab.id, false).catch(() => {});
   }
 });
 
-setGlobalIcon(false).catch(() => {});
+chrome.tabs.onActivated.addListener(async ({ tabId }) => {
+  await syncTabIcon(tabId);
+});
+
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
+  if (changeInfo.status === "loading") {
+    await setTabIcon(tabId, false).catch(() => {});
+  }
+});
